@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta style="color:red">
+    <title1 font-size="20%" background-color="yellow"><b>RIFT TECH SOLUTIONS</b> </title1><BR/>
+<div>
+
+<title2><input type="search"  id= "search" name="search"placeholder="Seach Anything..." onlick="document.getElementbyId('blank')value=""> </title2>  
+  <br/>
+<p><label>datetime-local:
+<input type="Datetime-local" name="datetime2">
+</label></p>
+
+
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f4f4f4;
+        }
+        h1 { color: pink; }
+        .container {
+            width: 50%;
+            margin: auto;
+            background: green;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        input, select, button {
+            margin: 5px;
+            padding: 10px;
+        }
+        #receipt {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px dashed #000;
+            background: #fff;
+            text-align: left;
+            width: 10.5cm;
+            height: 14.8cm;
+            overflow: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #ddd;
+        }
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #receipt, #receipt * {
+                visibility: visible;
+            }
+            #receipt {
+                position: absolute;
+                left: 0;
+                top: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<button type="button" onlick="document.getElementbyId('new').style.display='color:red'"> Click Me!</button>
+
+</div>
+
+<br/>
+    <h1>CHEBARBAR TECH POS SYSTEM</h1><br/>
+     <h11><i>P.O. BOX 25 , KAPSABET</i></h11><br/>
+     <h11><i>contact:0715565496</i></h11><br/>
+     
+
+    <!-- Login Section -->
+    <div class="container" id="login-container">
+        <h2>Login</h2>
+        <input type="text" id="username" placeholder="Username">
+        <input type="password" id="password" placeholder="Password">
+        <button onclick="login()">Login</button>
+    </div>
+
+    <!-- POS Section -->
+    <div class="container" id="pos-container" style="display:none;">
+        <h2>Sale Entry</h2>
+        <button onclick="logout()" style="float:right;">Logout</button>
+
+        <!-- Inventory Dropdown -->
+        <select id="itemSelect" onchange="autoFillPrice()">
+            <option value="">Select Item</option>
+        </select>
+        <input type="number" id="price" placeholder="Price">
+        <input type="number" id="quantity" placeholder="Quantity">
+        <input type="number" id="discount" placeholder="Discount (%)">
+        <button onclick="addItem()">Add Item</button>
+        <button onclick="saveToLocalStorage()">Save Receipt</button>
+        <button onclick="downloadReceipt()">Download Receipt</button>
+
+        <br><br>
+        <input type="text" id="search" placeholder="Search Item" onkeyup="searchItem()">
+        <ul id="searchResults"></ul>
+
+        <div id="receipt">
+            <h2>CHEBARBAR TECH</h2>
+            <h3>Receipt Area</h3>
+        </div>
+        <button onclick="printReceipt()">Print Receipt</button>
+        <button onclick="clearReceipt()">Clear Receipt</button>
+    </div>
+
+    <script>
+        const users = { CHEBARBAR: "8006" };
+        let receiptNumber = 1000;
+        let items = [];
+
+        // Inventory Data
+        const inventory = {
+            "Tube": 250,
+            "Bearing": 100,
+            "Plug": 100,
+            "Indicator": 100,
+            "Headcase": 150
+        };
+
+        // Populate dropdown on load
+        window.onload = () => {
+            const select = document.getElementById("itemSelect");
+            for (let item in inventory) {
+                let opt = document.createElement("option");
+                opt.value = item;
+                opt.textContent = item;
+                select.appendChild(opt);
+            }
+        };
+
+        function login() {
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+            if (users[user] === pass) {
+                document.getElementById('login-container').style.display = 'none';
+                document.getElementById('pos-container').style.display = 'block';
+            } else {
+                alert("Invalid credentials.");
+            }
+        }
+
+        function logout() {
+            document.getElementById('login-container').style.display = 'block';
+            document.getElementById('pos-container').style.display = 'none';
+        }
+
+        function autoFillPrice() {
+            const selected = document.getElementById("itemSelect").value;
+            document.getElementById("price").value = inventory[selected] || "";
+        }
+
+        function addItem() {
+            const item = document.getElementById('itemSelect').value;
+            const price = parseFloat(document.getElementById('price').value);
+            const quantity = parseInt(document.getElementById('quantity').value) || 1;
+            const discount = parseFloat(document.getElementById('discount').value) || 0;
+
+            if (!item || isNaN(price)) {
+                alert("Select a valid item and price.");
+                return;
+            }
+
+            const discountedPrice = price - (price * (discount / 100));
+            const totalPrice = discountedPrice * quantity;
+
+            items.push({ item, quantity, discount, price: totalPrice });
+            updateReceipt();
+        }
+
+        function updateReceipt() {
+            const receiptDiv = document.getElementById('receipt');
+            const date = new Date().toLocaleString();
+            let total = 0;
+            let html = `
+                <h2>CHEBARBAR TECH</h2>
+                <h3>Receipt #${receiptNumber}</h3>
+                <p>Date: ${date}</p>
+                <svg id="barcode"></svg>
+                <table>
+                    <tr>
+                        <th>#</th>
+                        <th>Item</th>
+                        <th>Qty</th>
+                        <th>Discount (%)</th>
+                        <th>Price (KES)</th>
+                    </tr>`;
+
+            items.forEach((entry, i) => {
+                total += entry.price;
+                html += `<tr>
+                    <td>${i + 1}</td>
+                    <td>${entry.item}</td>
+                    <td>${entry.quantity}</td>
+                    <td>${entry.discount}</td>
+                    <td>${entry.price.toFixed(2)}</td>
+                </tr>`;
+            });
+
+            html += `</table><h3>Total: KES ${total.toFixed(2)}</h3>`;
+            receiptDiv.innerHTML = html;
+
+            setTimeout(() => {
+                JsBarcode("#barcode", receiptNumber.toString(), {
+                    format: "CODE128",
+                    displayValue: true
+                });
+            }, 0);
+        }
+
+        function clearReceipt() {
+            items = [];
+            receiptNumber++;
+            document.getElementById('receipt').innerHTML = `
+                <h2>CHEBARBAR TECH</h2><h3>Receipt Area</h3>`;
+        }
+
+        function printReceipt() {
+            window.print();
+        }
+
+        function searchItem() {
+            const query = document.getElementById('search').value.toLowerCase();
+            const results = items.filter(i => i.item.toLowerCase().includes(query));
+            document.getElementById('searchResults').innerHTML = results.map(i => `<li>${i.item}</li>`).join('');
+        }
+
+        function saveToLocalStorage() {
+            const savedReceipts = JSON.parse(localStorage.getItem("receipts") || "[]");
+            savedReceipts.push({
+                receiptNumber,
+                items,
+                date: new Date().toLocaleString()
+            });
+            localStorage.setItem("receipts", JSON.stringify(savedReceipts));
+            alert("Receipt saved to localStorage!");
+        }
+
+        function downloadReceipt() {
+            const blob = new Blob([JSON.stringify({ receiptNumber, items }, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `receipt-${receiptNumber}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
